@@ -10,3 +10,10 @@ type RingQueue[T any] interface {
 	Pop() (elem T, newLen int, ok bool)
 	Peek() (elem T, len int, ok bool)
 }
+
+type WhenFull int
+
+const (
+	WhenFullError = WhenFull(iota)
+	WhenFullOverwrite
+)

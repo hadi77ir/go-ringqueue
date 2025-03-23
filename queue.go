@@ -15,13 +15,6 @@ type unsafeRQ[T any] struct {
 	whenFull WhenFull
 }
 
-type WhenFull int
-
-const (
-	WhenFullError = WhenFull(iota)
-	WhenFullOverwrite
-)
-
 func NewUnsafe[T any](capacity int, whenFull WhenFull) (RingQueue[T], error) {
 	return newUnsafe[T](capacity, whenFull)
 }
