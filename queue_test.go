@@ -1,4 +1,4 @@
-package roundrobin
+package ringqueue
 
 import (
 	"fmt"
@@ -21,8 +21,8 @@ func eqSlices[T comparable](a []T, b []T) bool {
 }
 
 func TestToString(t *testing.T) {
-	obj := NewRingQueue[int](10)
-	expected := "[RRQ full:false size:10 start:0 end:0 data:[0 0 0 0 0 0 0 0 0 0]]"
+	obj, _ := newUnsafe[int](10, WhenFullError)
+	expected := "[RQ full:false size:10 start:0 end:0 data:[0 0 0 0 0 0 0 0 0 0]]"
 	actual := fmt.Sprint(obj)
 
 	if actual != expected {
@@ -31,9 +31,9 @@ func TestToString(t *testing.T) {
 }
 
 func TestPushEnough(t *testing.T) {
-	obj := NewRingQueue[int](10)
+	obj, _ := newUnsafe[int](10, WhenFullError)
 	for idx := 0; idx < 10; idx++ {
-		err := obj.Push(idx)
+		_, err := obj.Push(idx)
 		if err != nil {
 			t.Fatalf("Unexpected error in adding an element with index %d", idx)
 		}
@@ -47,15 +47,15 @@ func TestPushEnough(t *testing.T) {
 }
 
 func TestPushOver(t *testing.T) {
-	obj := NewRingQueue[int](10)
+	obj, _ := newUnsafe[int](10, WhenFullError)
 	for idx := 0; idx < 10; idx++ {
-		err := obj.Push(idx)
+		_, err := obj.Push(idx)
 		if err != nil {
 			t.Fatalf("Unexpected error in adding an element with index %d", idx)
 		}
 	}
 
-	err := obj.Push(100)
+	_, err := obj.Push(100)
 	if err == nil {
 		t.Fatalf("Expected overflow error")
 	}
@@ -68,13 +68,13 @@ func TestPushOver(t *testing.T) {
 }
 
 func TestPushPop(t *testing.T) {
-	obj := NewRingQueue[int](10)
+	obj, _ := newUnsafe[int](10, WhenFullError)
 	for idx := 0; idx < 8; idx++ {
 		obj.Push(idx)
 	}
 	for idx := 0; idx < 5; idx++ {
-		e, err := obj.Pop()
-		if err != nil || e != idx {
+		e, _, ok := obj.Pop()
+		if ok || e != idx {
 			t.Fatalf("inconsistent behavior")
 		}
 	}
@@ -88,12 +88,12 @@ func TestPushPop(t *testing.T) {
 		t.Fatalf("Container data mismatch, expected:%v, found:%v", expected, obj.data)
 	}
 
-	if obj.Size() != 10 {
-		t.Fatalf("inconsistent size: %d", obj.Size())
+	if obj.Len() != 10 {
+		t.Fatalf("inconsistent size: %d", obj.Len())
 	}
 
 	for idx := 0; idx < 10; idx++ {
-		e, _ := obj.Pop()
+		e, _, _ := obj.Pop()
 		if e != expected[(5+idx)%10] {
 			t.Fatalf("inconsistent behavior")
 		}
@@ -118,8 +118,8 @@ func sim(capacity int) {
 	fmt.Printf("%d took %v\n", capacity, time.Since(start).Seconds())
 }
 
-func simRR(capacity int) {
-	rr := NewRingQueue[int](capacity)
+func simRQ(capacity int) {
+	rr, _ := newUnsafe[int](capacity, WhenFullError)
 
 	start := time.Now()
 	for n := 0; n < 1000000; n++ {
@@ -143,19 +143,24 @@ func TestSizes(t *testing.T) {
 	fmt.Println("rr")
 	cap = 1
 	for idx := 1; idx < 7; idx++ {
-		simRR(cap)
+		simRQ(cap)
 		cap = cap * 10
 	}
 }
 
-func BenchmarkRR(b *testing.B) {
-	rr := NewRingQueue[int](1_000)
+func BenchmarkRQUnsafe(b *testing.B) {
+	rq, _ := newUnsafe[int](1_000, WhenFullOverwrite)
 
 	for n := 0; n < b.N; n++ {
-		if rr.IsFull() {
-			rr.Pop()
-		}
-		rr.Push(n)
+		rq.Push(n)
+	}
+}
+
+func BenchmarkRQSafe(b *testing.B) {
+	rq, _ := NewSafe[int](1_000, WhenFullOverwrite)
+
+	for n := 0; n < b.N; n++ {
+		rq.Push(n)
 	}
 }
 

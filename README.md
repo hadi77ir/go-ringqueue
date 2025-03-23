@@ -1,76 +1,66 @@
-# go-container-roundrobin
-Ring (Circular or RoundRobin) queue-like conainer with fixed memory footprint
-
-Read full post here: https://www.sergetoro.com/golang-round-robin-queue-from-scratch
+# go-ringqueue
+Thread-safe Zero-copy Generic Ring (Circular) Queue
 
 ## What a Ring Queue is and Why use it
 So, what is a Ring Queue and why it's useful:
 1. It uses a static / fixed array buffer (no costly allocations)
-1. It does not shift elements on element removal (no costly memcopy)
-1. It can start anywhere in the buffer and loop over the end
+2. It does not shift elements on element removal (no costly memcopy)
+3. It can start anywhere in the buffer and loop over the end
 
 ![img](https://www.sergetoro.com/content/images/2023/06/RQ.svg)
 
-## RingQueue Performance
-Do you like benchmarks? I love them, even though many cases they are non-exhaustive, relatively synthetic and might give a skewed view of reality :)
-So, let's see how our implementation performs against a simple Go array.
-Remember, what we're looking for is an array slow down due to excessive copying.
 
-```go
-func BenchmarkRR(b *testing.B) {
-	rr := NewRingQueue[int](100_000)
+## Original Work
 
-	for n := 0; n < b.N; n++ {
-		if rr.IsFull() {
-			rr.Pop()
-		}
-		rr.Push(n)
-	}
-}
+This is a fork of `go-container-roundrobin` which is licensed under MIT license.
 
-func BenchmarkArray(b *testing.B) {
-	var ar [100_000]int
-	size := 0
+Read full post here: https://www.sergetoro.com/golang-round-robin-queue-from-scratch
 
-	for n := 0; n < b.N; n++ {
-		if size >= 100_000 {
-			copy(ar[0:], ar[1:])
-			size--
-		}
+```
+MIT License
 
-		ar[size] = n
-		size++
-	}
-}
+Copyright (c) 2023 Serge Toro
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 ```
 
-Which one do you thing would be the fastest? 😉 Let's run it!
-
-```bash
-go test -bench=. -benchmem
+## License
 ```
+MIT License
 
-Here's results on my Intel NUC Ubuntu Linux machine:
+Copyright (c) 2025 Mohammad Hadi Hosseinpour
 
-```bash
-goos: linux
-goarch: amd64
-cpu: Intel(R) Core(TM) i7-10710U CPU @ 1.10GHz
-BenchmarkRR-12          59798865                18.50 ns/op
-BenchmarkArray-12        1000000             17321.00 ns/op
-PASS
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 ```
-
-If I run the same test with just 10_000 queue size instead of 100_000:
-
-```bash
-goos: linux
-goarch: amd64
-cpu: Intel(R) Core(TM) i7-10710U CPU @ 1.10GHz
-BenchmarkRR-12          57184480                18.65 ns/op
-BenchmarkArray-12        1000000              1068 ns/op
-PASS
-```
-
-Let's plot the relation of run times and queue lengths:
-![img](https://www.sergetoro.com/content/images/2023/06/image.svg)
