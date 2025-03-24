@@ -140,7 +140,7 @@ func TestSizes(t *testing.T) {
 		cap = cap * 10
 	}
 
-	fmt.Println("rr")
+	fmt.Println("rq")
 	cap = 1
 	for idx := 1; idx < 7; idx++ {
 		simRQ(cap)
