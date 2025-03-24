@@ -21,7 +21,7 @@ func eqSlices[T comparable](a []T, b []T) bool {
 }
 
 func TestToString(t *testing.T) {
-	obj, _ := newUnsafe[int](10, WhenFullError)
+	obj, _ := newUnsafe[int](10, WhenFullError, nil)
 	expected := "[RQ full:false size:10 start:0 end:0 data:[0 0 0 0 0 0 0 0 0 0]]"
 	actual := fmt.Sprint(obj)
 
@@ -31,7 +31,7 @@ func TestToString(t *testing.T) {
 }
 
 func TestPushEnough(t *testing.T) {
-	obj, _ := newUnsafe[int](10, WhenFullError)
+	obj, _ := newUnsafe[int](10, WhenFullError, nil)
 	for idx := 0; idx < 10; idx++ {
 		_, err := obj.Push(idx)
 		if err != nil {
@@ -47,7 +47,7 @@ func TestPushEnough(t *testing.T) {
 }
 
 func TestPushOver(t *testing.T) {
-	obj, _ := newUnsafe[int](10, WhenFullError)
+	obj, _ := newUnsafe[int](10, WhenFullError, nil)
 	for idx := 0; idx < 10; idx++ {
 		_, err := obj.Push(idx)
 		if err != nil {
@@ -68,13 +68,13 @@ func TestPushOver(t *testing.T) {
 }
 
 func TestPushPop(t *testing.T) {
-	obj, _ := newUnsafe[int](10, WhenFullError)
+	obj, _ := newUnsafe[int](10, WhenFullError, nil)
 	for idx := 0; idx < 8; idx++ {
 		obj.Push(idx)
 	}
 	for idx := 0; idx < 5; idx++ {
-		e, _, ok := obj.Pop()
-		if ok || e != idx {
+		e, _, err := obj.Pop()
+		if err == nil || e != idx {
 			t.Fatalf("inconsistent behavior")
 		}
 	}
@@ -119,7 +119,7 @@ func sim(capacity int) {
 }
 
 func simRQ(capacity int) {
-	rr, _ := newUnsafe[int](capacity, WhenFullError)
+	rr, _ := newUnsafe[int](capacity, WhenFullError, nil)
 
 	start := time.Now()
 	for n := 0; n < 1000000; n++ {
@@ -149,7 +149,7 @@ func TestSizes(t *testing.T) {
 }
 
 func BenchmarkRQUnsafe(b *testing.B) {
-	rq, _ := newUnsafe[int](1_000, WhenFullOverwrite)
+	rq, _ := newUnsafe[int](1_000, WhenFullOverwrite, nil)
 
 	for n := 0; n < b.N; n++ {
 		rq.Push(n)
@@ -157,7 +157,7 @@ func BenchmarkRQUnsafe(b *testing.B) {
 }
 
 func BenchmarkRQSafe(b *testing.B) {
-	rq, _ := NewSafe[int](1_000, WhenFullOverwrite)
+	rq, _ := NewSafe[int](1_000, WhenFullOverwrite, WhenEmptyError, nil)
 
 	for n := 0; n < b.N; n++ {
 		rq.Push(n)
