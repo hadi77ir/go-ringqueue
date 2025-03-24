@@ -74,7 +74,7 @@ func TestPushPop(t *testing.T) {
 	}
 	for idx := 0; idx < 5; idx++ {
 		e, _, err := obj.Pop()
-		if err == nil || e != idx {
+		if err != nil || e != idx {
 			t.Fatalf("inconsistent behavior")
 		}
 	}
