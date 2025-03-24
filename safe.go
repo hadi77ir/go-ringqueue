@@ -48,6 +48,7 @@ func (s *safeRQ[T]) SetPopDeadline(t time.Time) error {
 	defer s.deadlineMutex.Unlock()
 	if t.IsZero() {
 		s.deadline = noDeadline
+		return nil
 	}
 	s.deadline = time.After(time.Until(t))
 	return nil
