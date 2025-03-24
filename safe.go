@@ -81,16 +81,19 @@ func (s *safeRQ[T]) Cap() int {
 	return s.rq.Cap()
 }
 
-func (s *safeRQ[T]) Push(element T) (newLen int, err error) {
-	{
-		s.mutex.Lock()
-		defer s.mutex.Unlock()
+func (s *safeRQ[T]) guardedPush(element T) (newLen int, err error) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 
-		newLen, err = s.rq.Push(element)
-		if err != nil {
-			return 0, err
-		}
+	newLen, err = s.rq.Push(element)
+	if err != nil {
+		return 0, err
 	}
+	return
+}
+
+func (s *safeRQ[T]) Push(element T) (newLen int, err error) {
+	newLen, err = s.guardedPush(element)
 	if s.whenEmpty == WhenEmptyBlock {
 		select {
 		case <-s.closed:
