@@ -1,6 +1,8 @@
 package ringqueue
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -97,6 +99,46 @@ func TestPushPop(t *testing.T) {
 		if e != expected[(5+idx)%10] {
 			t.Fatalf("inconsistent behavior")
 		}
+	}
+}
+
+func TestDeadline(t *testing.T) {
+	obj, _ := NewSafe[int](10, WhenFullError, WhenEmptyBlock, nil)
+	timeBefore := time.Now()
+	obj.SetPopDeadline(time.Now().Add(1 * time.Second))
+	_, _, err := obj.Pop()
+	if err == nil {
+		t.Fatalf("Expected error")
+	}
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("Expected DeadlineExceeded error")
+	}
+	if time.Since(timeBefore) < 1*time.Second {
+		t.Fatalf("Expected 1s timeout")
+	}
+}
+
+func TestDeadline2(t *testing.T) {
+	obj, _ := NewSafe[int](10, WhenFullError, WhenEmptyBlock, nil)
+	timeBefore := time.Now()
+	for i := 0; i < 10; i++ {
+		t.Log("push ", i)
+		obj.Push(i)
+	}
+	for i := 0; i < 10; i++ {
+		t.Log("pop ", i)
+		obj.Pop()
+	}
+	obj.SetPopDeadline(time.Now().Add(5 * time.Second))
+	_, _, err := obj.Pop()
+	if err == nil {
+		t.Fatalf("Expected error")
+	}
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("Expected DeadlineExceeded error")
+	}
+	if time.Since(timeBefore) < 5*time.Second {
+		t.Fatalf("Expected 1s timeout")
 	}
 }
 

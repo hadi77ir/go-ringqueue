@@ -4,6 +4,8 @@ import (
 	"context"
 	"sync"
 	"time"
+
+	"github.com/pion/transport/v3/deadline"
 )
 
 func NewSafe[T any](capacity int, whenFull WhenFull, whenEmpty WhenEmpty, onCloseFunc OnCloseFunc[T]) (RingQueue[T], error) {
@@ -17,7 +19,7 @@ func NewSafe[T any](capacity int, whenFull WhenFull, whenEmpty WhenEmpty, onClos
 	return &safeRQ[T]{
 		rq:        rq,
 		available: make(chan struct{}, 1),
-		deadline:  noDeadline,
+		deadline:  deadline.New(),
 		closed:    make(chan struct{}),
 		whenEmpty: whenEmpty,
 	}, nil
@@ -30,27 +32,17 @@ type safeRQ[T any] struct {
 	closed    chan struct{}
 	closeOnce sync.Once
 
-	deadline      <-chan time.Time
-	deadlineMutex sync.Mutex
+	deadline *deadline.Deadline
 
 	whenEmpty WhenEmpty
 	available chan struct{}
 }
 
-// a never returning chan
-var noDeadline = make(chan time.Time, 0)
-
 func (s *safeRQ[T]) SetPopDeadline(t time.Time) error {
 	if s.whenEmpty != WhenEmptyBlock {
 		return ErrUnsupported
 	}
-	s.deadlineMutex.Lock()
-	defer s.deadlineMutex.Unlock()
-	if t.IsZero() {
-		s.deadline = noDeadline
-		return nil
-	}
-	s.deadline = time.After(time.Until(t))
+	s.deadline.Set(t)
 	return nil
 }
 
@@ -112,19 +104,22 @@ func (s *safeRQ[T]) guardedPop() (elem T, newLen int, err error) {
 	return
 }
 func (s *safeRQ[T]) Pop() (elem T, newLen int, err error) {
+	elem, newLen, err = s.guardedPop()
+	if err == nil {
+		return
+	}
+	// we have an empty queue
 	var empty T
 	switch s.whenEmpty {
 	case WhenEmptyError:
-		return s.guardedPop()
+		return empty, 0, ErrEmptyQueue
 	case WhenEmptyBlock:
-		s.deadlineMutex.Lock()
-		defer s.deadlineMutex.Unlock()
 		select {
 		case <-s.closed:
 			return empty, 0, ErrClosed
 		case <-s.available:
-			return s.guardedPop()
-		case <-s.deadline:
+			return s.Pop()
+		case <-s.deadline.Done():
 			return empty, 0, context.DeadlineExceeded
 		}
 	default:
