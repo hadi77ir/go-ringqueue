@@ -134,7 +134,11 @@ func (r *unsafeRQ[T]) Close() error {
 	r.closeOnce.Do(func() {
 		r.closed = true
 		if r.onClose != nil {
-			r.onClose(r.data, r.start, r.end, r.isFull)
+			for (r.end - r.start) != 0 {
+				res := r.data[r.start]
+				r.start = (r.start + 1) % len(r.data)
+				r.onClose(res)
+			}
 		}
 		r.data = nil
 	})

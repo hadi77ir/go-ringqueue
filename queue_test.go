@@ -220,3 +220,84 @@ func BenchmarkArray(b *testing.B) {
 		size++
 	}
 }
+
+func TestOnClose(t *testing.T) {
+	type testCase struct {
+		name           string
+		pushCount      int
+		popCount       int
+		onCloseCount   int
+		wantErrInClose bool
+		wantMismatch   bool
+	}
+	tests := []testCase{
+		{
+			name:           "under-push",
+			pushCount:      1,
+			popCount:       1,
+			onCloseCount:   0,
+			wantErrInClose: false,
+			wantMismatch:   false,
+		},
+		{
+			name:           "over-push",
+			pushCount:      15,
+			popCount:       10,
+			onCloseCount:   0,
+			wantErrInClose: false,
+			wantMismatch:   false,
+		},
+		{
+			name:           "over-push and under-pop",
+			pushCount:      15,
+			popCount:       5,
+			onCloseCount:   5,
+			wantErrInClose: false,
+			wantMismatch:   false,
+		},
+		{
+			name:           "under-push and under-pop",
+			pushCount:      7,
+			popCount:       5,
+			onCloseCount:   2,
+			wantErrInClose: false,
+			wantMismatch:   false,
+		},
+		{
+			name:           "over-push and over-pop",
+			pushCount:      15,
+			popCount:       15,
+			onCloseCount:   0,
+			wantErrInClose: false,
+			wantMismatch:   false,
+		},
+		{
+			name:           "mismatch",
+			pushCount:      10,
+			popCount:       0,
+			onCloseCount:   0,
+			wantErrInClose: false,
+			wantMismatch:   false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			onCloseCount := 0
+			rr, _ := newUnsafe[int](10, WhenFullError, func(data int) {
+				onCloseCount++
+			})
+			for i := 0; i < tt.pushCount; i++ {
+				rr.Push(i)
+			}
+			for i := 0; i < tt.popCount; i++ {
+				rr.Pop()
+			}
+			if err := rr.Close(); (err != nil) != tt.wantErrInClose {
+				t.Errorf("Close() error = %v, wantErr %v", err, tt.wantErrInClose)
+			}
+			if onCloseCount != tt.onCloseCount && !tt.wantMismatch {
+				t.Errorf("onCloseCount = %v, wanted onCloseCount %v", onCloseCount, tt.onCloseCount)
+			}
+		})
+	}
+}

@@ -23,7 +23,7 @@ type RingQueue[T any] interface {
 	Peek() (elem T, len int, err error)
 }
 
-type OnCloseFunc[T any] func(data []T, start int, end int, isFull bool)
+type OnCloseFunc[T any] func(data T)
 
 type WhenFull int
 
